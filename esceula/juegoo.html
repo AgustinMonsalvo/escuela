@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Línea del tiempo interactiva de inventos</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+      overflow-x: hidden;
+    }
+    
+    /* Partículas de fondo animadas */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+      animation: particles 20s ease-in-out infinite;
+      pointer-events: none;
+      z-index: -1;
+    }
+    
+    @keyframes particles {
+      0%, 100% { opacity: 1; transform: translateY(0px); }
+      50% { opacity: 0.8; transform: translateY(-20px); }
+    }
+    
+    h1 {
+      text-align: center;
+      color: #ffffff;
+      margin-bottom: 40px;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      text-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+      animation: titleGlow 3s ease-in-out infinite alternate;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+    
+    @keyframes titleGlow {
+      from { text-shadow: 2px 2px 10px rgba(0,0,0,0.3), 0 0 20px rgba(255,255,255,0.2); }
+      to { text-shadow: 2px 2px 10px rgba(0,0,0,0.3), 0 0 30px rgba(255,255,255,0.4); }
+    }
+
+    /* Botón del juego */
+    .game-button {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 15px 25px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+      transition: all 0.3s ease;
+      z-index: 1000;
+      animation: bounce 2s infinite;
+    }
+
+    .game-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 12px 35px rgba(255, 107, 107, 0.4);
+    }
+
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-10px); }
+      60% { transform: translateY(-5px); }
+    }
+
+    /* Modal del juego */
+    .game-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      backdrop-filter: blur(10px);
+    }
+
+    .game-container {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9));
+      border-radius: 25px;
+      padding: 30px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      position: relative;
+      animation: gameModalIn 0.5s ease-out;
+    }
+
+    @keyframes gameModalIn {
+      from { opacity: 0; transform: scale(0.8) translateY(50px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .game-header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .game-title {
+      font-size: 2rem;
+      font-weight: bold;
+      background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+
+    .game-score {
+      font-size: 1.3rem;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .question-container {
+      background: rgba(102, 126, 234, 0.1);
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .question-text {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 15px;
+    }
+
+    .options-container {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .option-btn {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+      border: 2px solid transparent;
+      border-radius: 12px;
+      padding: 15px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      color: #2c3e50;
+    }
+
+    .option-btn:hover {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .option-btn.correct {
+      background: linear-gradient(135deg, #00b894, #00a085);
+      color: white;
+      animation: correctAnswer 0.6s ease;
+    }
+
+    .option-btn.incorrect {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      color: white;
+      animation: incorrectAnswer 0.6s ease;
+    }
+
+    @keyframes correctAnswer {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes incorrectAnswer {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      50% { transform: translateX(10px); }
+      75% { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
+    }
+
+    .game-controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .control-btn {
+      background: linear-gradient(45deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      padding: 12px 25px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .control-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .close-game {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: none;
+      border: none;
+      font-size: 2rem;
+      cursor: pointer;
+      color: #666;
+      transition: all 0.3s ease;
+    }
+
+    .close-game:hover {
+      color: #ff6b6b;
+      transform: rotate(90deg);
+    }
+
+    .game-result {
+      text-align: center;
+      padding: 20px;
+      border-radius: 15px;
+      margin: 20px 0;
+      font-size: 1.3rem;
+      font-weight: bold;
+    }
+
+    .game-result.win {
+      background: linear-gradient(135deg, rgba(0, 184, 148, 0.2), rgba(0, 160, 133, 0.2));
+      color: #00b894;
+    }
+
+    .game-result.lose {
+      background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(238, 90, 36, 0.2));
+      color: #ff6b6b;
+    }
+    
+    .timeline {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 25px;
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+    }
+    
+    .item {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+      border: none;
+      border-radius: 20px;
+      padding: 25px;
+      text-align: center;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      cursor: pointer;
+      position: relative;
+      backdrop-filter: blur(10px);
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+      overflow: hidden;
+      animation: slideInUp 0.6s ease-out;
+      animation-fill-mode: both;
+    }
+    
+    .item:nth-child(1) { animation-delay: 0.05s; }
+    .item:nth-child(2) { animation-delay: 0.1s; }
+    .item:nth-child(3) { animation-delay: 0.15s; }
+    .item:nth-child(4) { animation-delay: 0.2s; }
+    .item:nth-child(5) { animation-delay: 0.25s; }
+    .item:nth-child(6) { animation-delay: 0.3s; }
+    .item:nth-child(7) { animation-delay: 0.35s; }
+    
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(60px) scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    .item::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+      transform: rotate(45deg);
+      transition: all 0.5s;
+      opacity: 0;
+    }
+    
+    .item:hover::before {
+      animation: shimmer 0.8s ease-in-out;
+    }
+    
+    @keyframes shimmer {
+      0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); opacity: 0; }
+      50% { opacity: 1; }
+      100% { transform: translateX(100%) translateY(100%) rotate(45deg); opacity: 0; }
+    }
+    
+    .item:hover {
+      transform: translateY(-12px) scale(1.02);
+      box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+    
+    .item:active {
+      transform: translateY(-8px) scale(0.98);
+      transition: all 0.1s ease-out;
+    }
+    
+    .year {
+      font-size: clamp(1.2rem, 3vw, 1.6rem);
+      font-weight: 900;
+      background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      letter-spacing: 1px;
+    }
+    
+    .name {
+      font-size: clamp(1rem, 2.5vw, 1.3rem);
+      font-weight: 700;
+      color: #2c3e50;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      margin-bottom: 8px;
+    }
+    
+    .icon {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+    }
+    
+    .info-box {
+      margin-top: 40px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9));
+      border: none;
+      border-radius: 25px;
+      padding: 30px;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+      display: none;
+      animation: modalSlideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      backdrop-filter: blur(20px);
+      box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .info-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #ff6b6b, #ee5a24, #ff6b6b);
+      background-size: 200% 100%;
+      animation: gradientShift 3s ease infinite;
+    }
+    
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    .info-box h2 {
+      color: #2c3e50;
+      margin-bottom: 20px;
+      text-align: center;
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-weight: 800;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .info-box p {
+      margin-bottom: 20px;
+      line-height: 1.7;
+      font-size: clamp(0.9rem, 2vw, 1.1rem);
+      color: #444;
+      text-align: justify;
+    }
+    
+    .activities {
+      margin-top: 25px;
+      padding: 0;
+      list-style: none;
+    }
+    
+    .activities li {
+      margin-bottom: 15px;
+      padding: 15px;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+      border-radius: 12px;
+      border-left: 4px solid #667eea;
+      font-weight: 600;
+      color: #2c3e50;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .activities li::before {
+      content: '🤔';
+      margin-right: 10px;
+      font-size: 1.2rem;
+    }
+    
+    .activities li:hover {
+      transform: translateX(5px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    }
+    
+    .close-btn {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: none;
+      border: none;
+      font-size: 2rem;
+      cursor: pointer;
+      color: #666;
+      transition: all 0.3s ease;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .close-btn:hover {
+      color: #ff6b6b;
+      background: rgba(255, 107, 107, 0.1);
+      transform: rotate(90deg);
+    }
+    
+    /* Responsive design mejorado */
+    @media (min-width: 600px) {
+      .timeline {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 30px;
+      }
+      
+      .options-container {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (min-width: 900px) {
+      .timeline {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    
+    @media (min-width: 1200px) {
+      .timeline {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    
+    /* Mejoras para dispositivos móviles */
+    @media (max-width: 599px) {
+      .item {
+        padding: 20px;
+      }
+      
+      .info-box {
+        margin: 20px 10px;
+        padding: 20px;
+        border-radius: 15px;
+      }
+      
+      .close-btn {
+        top: 10px;
+        right: 15px;
+      }
+      
+      .game-button {
+        top: 10px;
+        right: 10px;
+        padding: 12px 20px;
+        font-size: 1rem;
+      }
+    }
+    
+    /* Animación de pulso para elementos interactivos */
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    .item:focus {
+      outline: none;
+      animation: pulse 0.6s ease-in-out;
+    }
+    
+    /* Scroll suave mejorado */
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 Línea del Tiempo de Inventos Históricos 🚀</h1>
+  
+  <!-- Botón del juego -->
+  <button class="game-button" onclick="openGame()">🎮 ¡Jugar Quiz!</button>
+  <button class="game-button" onclick="openInventoQuiz()" style="top: 90px; background: linear-gradient(45deg, #1abc9c, #16a085); box-shadow: 0 8px 25px rgba(26, 188, 156, 0.3);">🖼️ Adiviná el Invénto</button>
+
+  <!-- Modal del juego -->
+  <div class="game-modal" id="gameModal">
+    <div class="game-container">
+      <button class="close-game" onclick="closeGame()">×</button>
+      
+      <div class="game-header">
+        <div class="game-title">🎯 Quiz de Inventos</div>
+        <div class="game-score">Puntuación: <span id="score">0</span> / <span id="totalQuestions">5</span></div>
+      </div>
+
+      <div class="question-container" id="questionContainer">
+        <div class="question-text" id="questionText"></div>
+        <div class="options-container" id="optionsContainer"></div>
+      </div>
+
+      <div class="game-result" id="gameResult" style="display: none;"></div>
+
+      <div class="game-controls">
+        <button class="control-btn" onclick="nextQuestion()" id="nextBtn" style="display: none;">Siguiente</button>
+        <button class="control-btn" onclick="restartGame()" id="restartBtn" style="display: none;">Jugar de Nuevo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal del juego "Adiviná el invento" -->
+  <div class="game-modal" id="inventoGameModal">
+    <div class="game-container">
+      <button class="close-game" onclick="closeInventoQuiz()">×</button>
+      
+      <div class="game-header">
+        <div class="game-title">🖼️ Adiviná el Invénto</div>
+        <div class="game-score">Puntuación: <span id="inventoScore">0</span> / 3</div>
+      </div>
+
+      <div class="question-container" id="inventoQuestionContainer">
+        <img id="inventoImage" src="" alt="Invento a adivinar" style="max-width: 100%; border-radius: 15px; margin-bottom: 20px;">
+        <div class="options-container" id="inventoOptionsContainer"></div>
+      </div>
+
+      <div class="game-result" id="inventoGameResult" style="display: none;"></div>
+
+      <div class="game-controls">
+        <button class="control-btn" onclick="restartInventoQuiz()" id="restartInventoBtn" style="display: none;">Jugar de Nuevo</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="timeline">
+
+    <div class="item" onclick="showInfo(
+      'Imprenta',
+      'En 1450, Johannes Gutenberg desarrolló la imprenta de tipos móviles, lo que permitió reproducir libros de manera masiva por primera vez en la historia. Antes, los textos se copiaban a mano, una tarea larga y costosa. Con este invento, el acceso al conocimiento se democratizó, se impulsó la alfabetización y nacieron las primeras editoriales y librerías. La imprenta marcó el inicio de la era de la información escrita y fue clave para la difusión de ideas durante el Renacimiento.',
+      ['¿Qué transformación social surgió con la imprenta?', 'Imaginá que pudieras imprimir cualquier libro hoy: ¿cuál sería y por qué?']
+    )">
+      <div class="icon">📚</div>
+      <div class="year">1450</div>
+      <div class="name">Imprenta</div>
+    </div>
+
+    <div class="item" onclick="showInfo(
+      'Teléfono',
+      'En 1876, Alexander Graham Bell patentó el teléfono tras años de experimentos con la transmisión del sonido mediante impulsos eléctricos. Antes de su invención, las comunicaciones a larga distancia se basaban en cartas que tardaban días y en el telégrafo, que solo transmitía mensajes codificados por puntos y rayas. Con el teléfono, por primera vez, la voz humana pudo viajar instantáneamente a través de cables, acercando a familiares separados por cientos de kilómetros. Este invento revolucionó tanto la vida personal como los negocios, facilitó las llamadas de emergencia y estableció las bases de las comunicaciones modernas.',
+      ['¿Cómo mejoró la comunicación el invento del teléfono?', 'Explicá por qué el teléfono cambió los negocios y las emergencias.']
+    )">
+      <div class="icon">📞</div>
+      <div class="year">1876</div>
+      <div class="name">Teléfono</div>
+    </div>
+
+    <div class="item" onclick="showInfo(
+      'Lámpara',
+      'En 1879, Thomas Edison perfeccionó la bombilla incandescente usando filamentos duraderos y un vacío interno que evitaba la oxidación. Hasta entonces, la gente dependía de velas y lámparas de aceite, que producían humo y requerían recarga frecuente. La lámpara eléctrica permitió extender las horas de trabajo y estudio, mejoró la seguridad en calles y hogares, y revolucionó las industrias y el transporte. Este invento impulsó la electrificación de ciudades enteras y sentó las bases de la sociedad moderna conectada.',
+      ['¿Qué cambios permitió la luz eléctrica en la vida diaria?', 'Describe cómo era la vida nocturna antes y después de la lámpara.']
+    )">
+      <div class="icon">💡</div>
+      <div class="year">1879</div>
+      <div class="name">Lámpara eléctrica</div>
+    </div>
+
+    <div class="item" onclick="showInfo(
+      'Avión',
+      'En 1903, los hermanos Wright realizaron el primer vuelo controlado, sostenido y motorizado en Kitty Hawk, Carolina del Norte. Su planeador con motor de cuatro cilindros voló 37 metros en 12 segundos, demostrando que el viaje aéreo era posible. Este logro transformó el transporte mundial, acortó distancias, fomentó el turismo internacional y revolucionó la logística y la estrategia militar. Desde aquel primer vuelo, la aviación ha evolucionado hasta jets supersónicos y vuelos espaciales comerciales.',
+      ['¿Qué impacto tuvo el avión en el turismo?', 'Imaginá tu primer viaje en avión: ¿a dónde irías y por qué?']
+    )">
+      <div class="icon">✈️</div>
+      <div class="year">1903</div>
+      <div class="name">Avión</div>
+    </div>
+
+    <div class="item" onclick="showInfo(
+      'Internet',
+      'En 1983, ARPANET adoptó el protocolo TCP/IP, estableciendo el estándar para la transmisión de datos que conocemos como Internet. Inicialmente diseñado para compartir información entre universidades y agencias gubernamentales, creció rápidamente hasta incluir redes de todo el mundo. Internet permitió el intercambio instantáneo de correos electrónicos, el acceso a bibliotecas digitales y, más tarde, el surgimiento de redes sociales y comercio electrónico. Transformó la educación, el entretenimiento y la economía global, haciendo del mundo un lugar más conectado.',
+      ['¿Cómo ha cambiado tu forma de aprender gracias a Internet?', 'Explica dos maneras en que Internet influyó en tu vida diaria.']
+    )">
+      <div class="icon">🌐</div>
+      <div class="year">1983</div>
+      <div class="name">Internet</div>
+    </div>
+
+    <div class="item" onclick="showInfo(
+      'Radio',
+      'En 1895, Guglielmo Marconi envió la primera señal de radio inalámbrica a más de un kilómetro de distancia, demostrando que las ondas electromagnéticas podían transportar información sin hilos. La radio se convirtió en el primer medio de comunicación masiva, llevando noticias, música y programas de entretenimiento a hogares y automóviles. Durante guerras y crisis, la radio fue esencial para la información y el ánimo de la población. Aún hoy, sigue siendo crucial en zonas rurales y emergencias, donde otras redes fallan.',
+      ['¿Por qué la radio fue importante en tiempos de guerra?', 'Describe cómo la radio conecta a personas en áreas alejadas.']
+    )">
+      <div class="icon">📻</div>
+      <div class="year">1895</div>
+      <div class="name">Radio</div>
+    </div>
+
+    <div class="item" onclick="showInfo(
+      'Computadora',
+      'En 1946, ENIAC (Electronic Numerical Integrator and Computer) se presentó como la primera computadora electrónica de propósito general, ocupando una sala entera y usando tubos de vacío para procesar datos. Años después, las computadoras se miniaturizaron hasta los PCs y laptops, y hoy se encuentran en smartphones y tabletas. Las computadoras aceleraron la investigación científica, automatizaron industrias y permitieron la creación de gráficos y simulaciones avanzadas. Son la base de la era digital, esencial para casi todas las profesiones y actividades cotidianas.',
+      ['¿Qué beneficios trajo la computadora a la ciencia?', 'Menciona un ejemplo de uso diario de la computadora en tu vida.']
+    )">
+      <div class="icon">💻</div>
+      <div class="year">1946</div>
+      <div class="name">Computadora</div>
+    </div>
+
+  </div>
+
+  <div class="info-box" id="infoBox">
+    <button class="close-btn" onclick="closeInfo()">×</button>
+    <h2 id="infoTitle"></h2>
+    <p id="infoText"></p>
+    <ul class="activities" id="activityList"></ul>
+  </div>
+
+  <script>
+    // Función para mostrar información
+    function showInfo(title, text, activities) {
+      document.getElementById('infoTitle').innerText = title;
+      document.getElementById('infoText').innerText = text;
+      const activityList = document.getElementById('activityList');
+      activityList.innerHTML = '';
+      
+      activities.forEach(function(act, index) {
+        const li = document.createElement('li');
+        li.innerText = act;
+        li.style.animationDelay = (index * 0.1) + 's';
+        li.style.animation = 'slideInUp 0.5s ease-out forwards';
+        activityList.appendChild(li);
+      });
+      
+      const box = document.getElementById('infoBox');
+      box.style.display = 'block';
+      
+      // Scroll suave hacia el info box
+      setTimeout(() => {
+        box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+    
+    // Función para cerrar información
+    function closeInfo() {
+      const box = document.getElementById('infoBox');
+      box.style.animation = 'modalSlideOut 0.3s ease-out forwards';
+      setTimeout(() => {
+        box.style.display = 'none';
+        box.style.animation = 'modalSlideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+      }, 300);
+    }
+
+    // ===== JUEGO DE QUIZ =====
+    
+    const quizQuestions = [
+      {
+        question: "¿En qué año se inventó la imprenta?",
+        options: ["1450", "1400", "1500", "1425"],
+        correct: 0,
+        emoji: "📚"
+      },
+      {
+        question: "¿Quién inventó el teléfono?",
+        options: ["Thomas Edison", "Alexander Graham Bell", "Nikola Tesla", "Guglielmo Marconi"],
+        correct: 1,
+        emoji: "📞"
+      },
+      {
+        question: "¿Cuál fue el primer vuelo de los hermanos Wright?",
+        options: ["30 metros", "37 metros", "45 metros", "25 metros"],
+        correct: 1,
+        emoji: "✈️"
+      },
+      {
+        question: "¿En qué año se estableció el protocolo TCP/IP para Internet?",
+        options: ["1980", "1985", "1983", "1990"],
+        correct: 2,
+        emoji: "🌐"
+      },
+      {
+        question: "¿Qué invento permitió extender las horas de trabajo nocturno?",
+        options: ["Radio", "Teléfono", "Computadora", "Lámpara eléctrica"],
+        correct: 3,
+        emoji: "💡"
+      },
+      {
+        question: "¿Cómo se llamaba la primera computadora electrónica?",
+        options: ["UNIVAC", "ENIAC", "EDVAC", "COLOSSUS"],
+        correct: 1,
+        emoji: "💻"
+      },
+      {
+        question: "¿Quién desarrolló las primeras transmisiones de radio?",
+        options: ["Thomas Edison", "Alexander Bell", "Guglielmo Marconi", "Nikola Tesla"],
+        correct: 2,
+        emoji: "📻"
+      }
+    ];
+
+    let currentScore = 0;
+    let currentQuestion = 0;
+    let gameQuestions = [];
+    let answered = false;
+
+    function openGame() {
+      document.getElementById('gameModal').style.display = 'flex';
+      startNewGame();
+    }
+
+    function closeGame() {
+      document.getElementById('gameModal').style.display = 'none';
+    }
+
+    function startNewGame() {
+      currentScore = 0;
+      currentQuestion = 0;
+      answered = false;
+      
+      // Seleccionar 5 preguntas aleatorias
+      gameQuestions = shuffleArray([...quizQuestions]).slice(0, 5);
+      
+      updateScore();
+      showQuestion();
+      
+      document.getElementById('gameResult').style.display = 'none';
+      document.getElementById('nextBtn').style.display = 'none';
+      document.getElementById('restartBtn').style.display = 'none';
+    }
+
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function showQuestion() {
+      if (currentQuestion >= gameQuestions.length) {
+        endGame();
+        return;
+      }
+
+      const question = gameQuestions[currentQuestion];
+      answered = false;
+      
+      document.getElementById('questionText').innerHTML = `
+        <span style="font-size: 2rem; margin-right: 10px;">${question.emoji}</span>
+        ${question.question}
+      `;
+      
+      const container = document.getElementById('optionsContainer');
+      container.innerHTML = '';
+      
+      question.options.forEach((option, index) => {
+        const button = document.createElement('button');
+        button.className = 'option-btn';
+        button.textContent = option;
+        button.onclick = () => selectAnswer(index);
+        container.appendChild(button);
+      });
+    }
+
+    function selectAnswer(selectedIndex) {
+      if (answered) return;
+      
+      answered = true;
+      const question = gameQuestions[currentQuestion];
+      const buttons = document.querySelectorAll('.option-btn');
+      
+      buttons.forEach((button, index) => {
+        if (index === question.correct) {
+          button.classList.add('correct');
+        } else if (index === selectedIndex && index !== question.correct) {
+          button.classList.add('incorrect');
+        }
+        button.style.pointerEvents = 'none';
+      });
+      
+      if (selectedIndex === question.correct) {
+        currentScore++;
+        updateScore();
+      }
+      
+      setTimeout(() => {
+        if (currentQuestion < gameQuestions.length - 1) {
+          document.getElementById('nextBtn').style.display = 'block';
+        } else {
+          endGame();
+        }
+      }, 1500);
+    }
+
+    function nextQuestion() {
+      currentQuestion++;
+      showQuestion();
+      document.getElementById('nextBtn').style.display = 'none';
+    }
+
+    function updateScore() {
+      document.getElementById('score').textContent = currentScore;
+      document.getElementById('totalQuestions').textContent = gameQuestions.length;
+    }
+
+    function endGame() {
+      const resultDiv = document.getElementById('gameResult');
+      const percentage = (currentScore / gameQuestions.length) * 100;
+      
+      let message = '';
+      let className = '';
+      
+      if (percentage >= 80) {
+        message = `🎉 ¡Excelente! ${currentScore}/${gameQuestions.length} - ¡Sos un experto en inventos!`;
+        className = 'win';
+      } else if (percentage >= 60) {
+        message = `👏 ¡Bien hecho! ${currentScore}/${gameQuestions.length} - ¡Buen conocimiento!`;
+        className = 'win';
+      } else {
+        message = `🤔 ${currentScore}/${gameQuestions.length} - ¡Seguí aprendiendo sobre inventos!`;
+        className = 'lose';
+      }
+      
+      resultDiv.textContent = message;
+      resultDiv.className = `game-result ${className}`;
+      resultDiv.style.display = 'block';
+      
+      document.getElementById('questionContainer').style.display = 'none';
+      document.getElementById('restartBtn').style.display = 'block';
+    }
+
+    function restartGame() {
+      document.getElementById('questionContainer').style.display = 'block';
+      startNewGame();
+    }
+    
+    // Agregar animación de salida
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes modalSlideOut {
+        from {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+        to {
+          opacity: 0;
+          transform: translateY(-30px) scale(0.9);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    // Cerrar modal con tecla Escape
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeInfo();
+        closeGame();
+      }
+    });
+    
+    // Efecto de parallax suave en el scroll
+    window.addEventListener('scroll', function() {
+      const scrolled = window.pageYOffset;
+      const parallax = document.querySelector('body::before');
+      const speed = scrolled * 0.5;
+    });
+    
+    // Animación de entrada para los elementos
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver(function(entries) {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.animationPlayState = 'running';
+        }
+      });
+    }, observerOptions);
+    
+    // Observar todos los elementos de la línea de tiempo
+    document.querySelectorAll('.item').forEach(item => {
+      observer.observe(item);
+    });
+  </script>
+</body>
+<script>
+// Lógica para el nuevo quiz "Adiviná el invento"
+
+const inventoGameModal = document.getElementById('inventoGameModal');
+const inventoQuestionContainer = document.getElementById('inventoQuestionContainer');
+const inventoImage = document.getElementById('inventoImage');
+const inventoOptionsContainer = document.getElementById('inventoOptionsContainer');
+const inventoScoreEl = document.getElementById('inventoScore');
+const inventoGameResult = document.getElementById('inventoGameResult');
+const restartInventoBtn = document.getElementById('restartInventoBtn');
+
+const inventoQuizData = [
+  {
+    image: '20250704_2031_Ancient Printing Press_simple_compose_01jzbwd8xcfy3t3sc343s65t5d.png',
+    options: ['Telar', 'Imprenta', 'Máquina de Vapor'],
+    answer: 'Imprenta'
+  },
+  {
+    image: '20250704_2038_Wright Brothers\' First Flight_simple_compose_01jzbwtbg4f29s60s3skn559w7.png',
+    options: ['Barco', 'Avión', 'Dirigible'],
+    answer: 'Avión'
+  },
+  {
+    image: '20250704_2050_Futuristic ENIAC Machine_simple_compose_01jzbxgczmf4ztatgeqdpghmnh.png',
+    options: ['Radio', 'Telégrafo', 'Computadora'],
+    answer: 'Computadora'
+  }
+];
+
+let currentInventoQuestionIndex = 0;
+let inventoScore = 0;
+
+function openInventoQuiz() {
+  inventoGameModal.style.display = 'flex';
+  restartInventoQuiz();
+}
+
+function closeInventoQuiz() {
+  inventoGameModal.style.display = 'none';
+}
+
+function restartInventoQuiz() {
+  currentInventoQuestionIndex = 0;
+  inventoScore = 0;
+  inventoScoreEl.textContent = inventoScore;
+  inventoGameResult.style.display = 'none';
+  restartInventoBtn.style.display = 'none';
+  inventoQuestionContainer.style.display = 'block';
+  displayInventoQuestion();
+}
+
+function displayInventoQuestion() {
+  const question = inventoQuizData[currentInventoQuestionIndex];
+  inventoImage.src = question.image;
+  inventoOptionsContainer.innerHTML = '';
+  
+  question.options.forEach(option => {
+    const button = document.createElement('button');
+    button.textContent = option;
+    button.classList.add('option-btn');
+    button.onclick = () => checkInventoAnswer(option, button);
+    inventoOptionsContainer.appendChild(button);
+  });
+}
+
+function checkInventoAnswer(selectedOption, button) {
+  const correct = selectedOption === inventoQuizData[currentInventoQuestionIndex].answer;
+  
+  if (correct) {
+    inventoScore++;
+    inventoScoreEl.textContent = inventoScore;
+    button.classList.add('correct');
+    showTempMessage('¡Correcto!', 'win');
+  } else {
+    button.classList.add('incorrect');
+    showTempMessage('Incorrecto', 'lose');
+  }
+
+  // Deshabilitar botones
+  Array.from(inventoOptionsContainer.children).forEach(btn => btn.disabled = true);
+
+  setTimeout(() => {
+    currentInventoQuestionIndex++;
+    if (currentInventoQuestionIndex < inventoQuizData.length) {
+      displayInventoQuestion();
+    } else {
+      showInventoResult();
+    }
+  }, 1500);
+}
+
+function showInventoResult() {
+  inventoQuestionContainer.style.display = 'none';
+  inventoGameResult.innerHTML = `¡Adivinaste ${inventoScore} de ${inventoQuizData.length}!`;
+  inventoGameResult.className = 'game-result';
+  inventoGameResult.classList.add(inventoScore >= 2 ? 'win' : 'lose');
+  inventoGameResult.style.display = 'block';
+  restartInventoBtn.style.display = 'block';
+}
+
+function showTempMessage(message, type) {
+    const tempMsg = document.createElement('div');
+    tempMsg.textContent = message;
+    tempMsg.className = `game-result ${type}`;
+    tempMsg.style.display = 'block';
+    tempMsg.style.marginTop = '0';
+    inventoQuestionContainer.appendChild(tempMsg);
+
+    setTimeout(() => {
+        tempMsg.remove();
+    }, 1200);
+}
+
+</script>
+</html>
